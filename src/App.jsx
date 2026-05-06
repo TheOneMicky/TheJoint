@@ -14,7 +14,6 @@ import SessionLobby from './pages/SessionLobby'
 import UserMatching from './pages/UserMatching'
 import CreateTemplate from './pages/CreateTemplate'
 import Profile from './pages/Profile'
-import DatabaseInspector from './components/DatabaseInspector'
 
 function App() {
   useEffect(() => {
@@ -95,7 +94,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/inspect" element={<DatabaseInspector />} />
         </Routes>
       </Router>
       </AuthContextProvider>

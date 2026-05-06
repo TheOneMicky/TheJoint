@@ -245,21 +245,21 @@ body {
   @apply bg-zinc-400 dark:bg-zinc-600;
 }
 
-/* Custom Liftin Scrollbar */
-.scrollbar-liftin::-webkit-scrollbar {
+/* Custom Scrollbar */
+.scrollbar-custom::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
-.scrollbar-liftin::-webkit-scrollbar-track {
+.scrollbar-custom::-webkit-scrollbar-track {
   @apply bg-zinc-100 dark:bg-zinc-900;
 }
 
-.scrollbar-liftin::-webkit-scrollbar-thumb {
+.scrollbar-custom::-webkit-scrollbar-thumb {
   @apply bg-zinc-800 rounded-full;
 }
 
-.scrollbar-liftin::-webkit-scrollbar-thumb:hover {
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
   @apply bg-zinc-700;
 }
 

@@ -689,7 +689,7 @@ export default function CreateTemplate() {
 
           {/* Search Results */}
           {showDropdown && searchResults.length > 0 && (
-            <div className="absolute z-20 w-full mt-2 rounded-xl overflow-hidden shadow-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 max-h-[400px] overflow-y-auto scrollbar-liftin">
+            <div className="absolute z-20 w-full mt-2 rounded-xl overflow-hidden shadow-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 max-h-[400px] overflow-y-auto scrollbar-custom">
               {Object.entries(groupedResults).map(([bodyPart, exercises]) => (
                 <div key={bodyPart}>
                   {bodyPart && (
@@ -755,7 +755,7 @@ export default function CreateTemplate() {
         </div>
 
         {/* Selected Exercises List */}
-        <div className="space-y-4 scrollbar-liftin">
+        <div className="space-y-4 scrollbar-custom">
           <h2 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
             Exercises ({selectedExercises.length})
           </h2>

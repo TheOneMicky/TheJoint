@@ -71,7 +71,7 @@ export default function AuthPage() {
         <div className="text-center">
           {/* Logo */}
           <div className="mx-auto mb-5 animate-slide-up">
-            <img src={logo} alt="LiftIn" className="h-16 w-16 object-contain mx-auto" />
+            <img src={logo} alt="The Joint" className="h-16 w-16 object-contain mx-auto" />
           </div>
           <h2 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 mb-2">
             {isLogin ? 'Welcome back' : 'Create account'}

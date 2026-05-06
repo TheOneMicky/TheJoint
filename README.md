@@ -1,4 +1,4 @@
-# LiftIn - Real-Time Collaborative Workout Platform
+# The Joint - Real-Time Collaborative Workout Platform
 
 A comprehensive multiplayer fitness application that enables users to workout together in real-time, track progress, and build lasting fitness partnerships.
 
@@ -50,25 +50,13 @@ VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 2. Database Setup
-
-Run the SQL scripts in the `database/` directory in your Supabase SQL editor to create the required tables:
-- `profiles` - User profile data
-- `live_sessions` - Active workout sessions
-- `session_participants` - Session membership
-- `session_logs` - Workout activity logs
-- `workout_templates` - Custom workout templates
-- `template_exercises` - Template exercise mappings
-- `exercises` - Master exercise library
-- `partner_history` - Partner workout history
-
-### 3. Install Dependencies
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 4. Start Development Server
+### 3. Start Development Server
 
 ```bash
 npm run dev

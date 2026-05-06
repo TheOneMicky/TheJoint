@@ -39,7 +39,7 @@ export default function LoadingScreen({ onComplete }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
       <img 
         src={logo} 
-        alt="LiftIn" 
+        alt="The Joint" 
         className={`h-24 w-24 object-contain ${currentAnimation}`} 
       />
     </div>

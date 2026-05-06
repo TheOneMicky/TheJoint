@@ -37,9 +37,9 @@ export default function Landing() {
         <div className="text-center max-w-2xl animate-slide-up">
           {/* Logo and Title */}
           <div className="flex items-center justify-center mb-6">
-            <img src={logo} alt="LiftIn" className={`h-20 w-20 object-contain mr-4 ${logoAnimation}`} />
+            <img src={logo} alt="The Joint" className={`h-20 w-20 object-contain mr-4 ${logoAnimation}`} />
             <h1 className="text-5xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
-              LiftIn
+              The Joint
             </h1>
           </div>
           
