@@ -701,7 +701,7 @@ export default function WorkoutDashboard() {
             </div>
             <h3 className="font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 mb-2">No templates yet</h3>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-              Create your first workout template to get started
+              Click the '+' button to create your first workout template to get started.
             </p>
           </div>
         )}
