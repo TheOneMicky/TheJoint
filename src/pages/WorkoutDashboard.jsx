@@ -15,42 +15,10 @@ import { useNavigate } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import MatchmakingLobby from '../components/MatchmakingLobby'
 
-// Default workout templates
-const defaultTemplates = [
-  {
-    id: 'hiit-cardio',
-    name: 'HIIT Cardio Blast',
-    exercises: ['Burpees', 'Mountain Climbers', 'Jumping Jacks', 'High Knees'],
-    duration: 20,
-    color: '#FF6B35'
-  },
-  {
-    id: 'upper-strength',
-    name: 'Upper Body Strength',
-    exercises: ['Push-ups', 'Dumbbell Rows', 'Shoulder Press', 'Bicep Curls'],
-    duration: 35,
-    color: '#4A90D9'
-  },
-  {
-    id: 'core-power',
-    name: 'Core Power',
-    exercises: ['Plank', 'Russian Twists', 'Leg Raises', 'Crunches'],
-    duration: 15,
-    color: '#9B59B6'
-  },
-  {
-    id: 'leg-day',
-    name: 'Leg Day Basics',
-    exercises: ['Squats', 'Lunges', 'Calf Raises', 'Glute Bridges'],
-    duration: 40,
-    color: '#27AE60'
-  }
-]
-
 export default function WorkoutDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [templates, setTemplates] = useState(defaultTemplates)
+  const [templates, setTemplates] = useState([])
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showLoadingScreen, setShowLoadingScreen] = useState(true)
@@ -70,19 +38,6 @@ export default function WorkoutDashboard() {
       fetchUserStats()
     }
   }, [user])
-
-  // Utility function to calculate total reps for a template
-  const calculateTotalReps = (exercises) => {
-    return exercises.reduce((total, exercise) => {
-      const sets = exercise.sets || 3
-      const reps = exercise.reps || 10
-      // Only count reps if it's not a cardio/stretching exercise (which uses duration)
-      if (exercise.category === 'cardio' || exercise.category === 'stretching') {
-        return total
-      }
-      return total + (sets * reps)
-    }, 0)
-  }
 
   const fetchUserProfile = async () => {
     try {

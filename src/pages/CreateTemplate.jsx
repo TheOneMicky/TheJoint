@@ -491,17 +491,6 @@ export default function CreateTemplate() {
     { value: 'cooldown', label: 'Cooldown' }
   ]
 
-  const bodyPartOptions = [
-    { value: 'back', label: 'Back' },
-    { value: 'chest', label: 'Chest' },
-    { value: 'legs', label: 'Legs' },
-    { value: 'shoulders', label: 'Shoulders' },
-    { value: 'arms', label: 'Arms' },
-    { value: 'core', label: 'Core' },
-    { value: 'cardio', label: 'Cardio' },
-    { value: 'full body', label: 'Full Body' }
-  ]
-
   // Use dynamic filter options from the data
   const filterOptions = useMemo(() => {
     return [
