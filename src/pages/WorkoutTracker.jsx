@@ -2,12 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { 
-  Check, 
   X,
-  Users,
   Timer,
-  LogOut,
-  Dumbbell,
   Flame,
   HelpCircle
 } from 'lucide-react'
