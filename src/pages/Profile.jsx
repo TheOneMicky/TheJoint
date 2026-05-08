@@ -249,21 +249,6 @@ export default function Profile() {
     return date.getFullYear().toString()
   }
 
-  const getTimeAgo = (dateString) => {
-    if (!dateString) return 'Unknown'
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
-    return `${Math.floor(diffDays / 365)} years ago`
-  }
-
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950">
       {/* Header */}
@@ -543,9 +528,6 @@ export default function Profile() {
                     <div>
                       <p className="font-medium text-zinc-950 dark:text-zinc-50">
                         {partner.username || 'Unknown'}
-                      </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Last seen: {getTimeAgo(partner.last_workout_at)}
                       </p>
                     </div>
                   </div>

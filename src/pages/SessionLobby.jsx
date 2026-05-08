@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Users, Loader2, LayoutTemplate } from 'lucide-react'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function SessionLobby() {
   const { user } = useAuth()
@@ -12,6 +13,7 @@ export default function SessionLobby() {
   const [session, setSession] = useState(null)
   const [participants, setParticipants] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true)
   const [profiles, setProfiles] = useState({})
   
   useEffect(() => {
@@ -264,12 +266,10 @@ export default function SessionLobby() {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-orange-600 dark:text-orange-500" />
-          <p className="text-zinc-600 dark:text-zinc-400 text-lg">Loading lobby...</p>
-        </div>
-      </div>
+      <LoadingScreen 
+        isLoading={loading}
+        onComplete={() => setShowLoadingScreen(false)} 
+      />
     )
   }
   

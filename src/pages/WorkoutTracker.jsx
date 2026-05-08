@@ -8,6 +8,7 @@ import {
   HelpCircle
 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function WorkoutTracker() {
   const { user } = useAuth()
@@ -20,6 +21,7 @@ export default function WorkoutTracker() {
   const [sessionId, setSessionId] = useState(null)
   const [sessionData, setSessionData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true)
   const [partnerProfile, setPartnerProfile] = useState(null)
   const [currentUserProfile, setCurrentUserProfile] = useState(null)
   const [sessionLogs, setSessionLogs] = useState([])
@@ -668,17 +670,27 @@ export default function WorkoutTracker() {
     if (!sessionId || !sessionData) return
 
     try {
-      const isHost = user.id === sessionData.host_id
+      // Query session_participants to check how many users are currently in this session
+      const { data: participants } = await supabase
+        .from('session_participants')
+        .select('user_id')
+        .eq('session_id', sessionId)
 
-      if (isHost) {
-        // Host: Delete session and cleanup
+      if (participants && participants.length <= 1) {
+        // Last User Rule: You are the last person here. Nuke the whole room.
         await supabase
           .from('live_sessions')
           .delete()
           .eq('id', sessionId)
+      } else {
+        // Walk Out Rule: Partner is still working out. Just walk out the door quietly.
+        await supabase
+          .from('session_participants')
+          .delete()
+          .eq('user_id', user.id)
       }
 
-      // Always cleanup user profile
+      // Cleanup: Update profile to set current_session_id to null and search_status to false
       await supabase
         .from('profiles')
         .update({
@@ -697,12 +709,10 @@ export default function WorkoutTracker() {
   // Show zero-state while loading
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-orange-600 dark:border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-zinc-600 dark:text-zinc-400 text-lg">Loading Workout...</p>
-        </div>
-      </div>
+      <LoadingScreen 
+        isLoading={loading}
+        onComplete={() => setShowLoadingScreen(false)} 
+      />
     )
   }
 

@@ -30,6 +30,9 @@ export default function WorkoutDashboard() {
     partners: 0
   })
   const [searchStatus, setSearchStatus] = useState(false)
+  const [staleSession, setStaleSession] = useState(null)
+  const [showStaleModal, setShowStaleModal] = useState(false)
+  const [checkingStaleSession, setCheckingStaleSession] = useState(true)
 
   useEffect(() => {
     if (user) {
@@ -37,6 +40,70 @@ export default function WorkoutDashboard() {
       fetchTemplates()
       fetchUserStats()
     }
+  }, [user])
+
+  // Stale Session Cleanup Check
+  useEffect(() => {
+    const checkForStaleSession = async () => {
+      if (!user) return
+
+      try {
+        // Fetch user's current session ID from profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('current_session_id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (profileError) throw profileError
+
+        if (profile?.current_session_id) {
+          // Fetch the session details
+          const { data: session, error: sessionError } = await supabase
+            .from('live_sessions')
+            .select('id, created_at, status')
+            .eq('id', profile.current_session_id)
+            .single()
+
+          if (sessionError) {
+            // Session might not exist anymore, clean up profile
+            if (sessionError.code === 'PGRST116') {
+              await supabase
+                .from('profiles')
+                .update({ current_session_id: null, search_status: false })
+                .eq('user_id', user.id)
+            }
+            throw sessionError
+          }
+
+          // Check if session is already completed
+          if (session?.status === 'completed') {
+            await supabase
+              .from('profiles')
+              .update({ current_session_id: null, search_status: false })
+              .eq('user_id', user.id)
+            setCheckingStaleSession(false)
+            return
+          }
+
+          // Check if session is older than 12 hours
+          const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000)
+          const sessionCreatedAt = new Date(session.created_at)
+
+          if (sessionCreatedAt < twelveHoursAgo) {
+            // Session is stale
+            setStaleSession(session)
+            setShowStaleModal(true)
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for stale session:', error)
+      } finally {
+        setCheckingStaleSession(false)
+      }
+    }
+
+    checkForStaleSession()
   }, [user])
 
   const fetchUserProfile = async () => {
@@ -90,6 +157,7 @@ export default function WorkoutDashboard() {
           )
         `)
         .eq('user_id', user.id)
+        .eq('is_archived', false)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -220,21 +288,10 @@ export default function WorkoutDashboard() {
     if (!confirm('Are you sure you want to delete this template?')) return
 
     try {
-      // Delete from template_exercises first (in case cascade isn't set up)
-      const { error: exercisesError } = await supabase
-        .from('template_exercises')
-        .delete()
-        .eq('template_id', templateId)
-
-      if (exercisesError) {
-        // If cascade is set up, this might fail, but that's okay
-        console.warn('Could not delete template_exercises:', exercisesError.message)
-      }
-
-      // Delete the template
+      // Soft delete: Archive the template instead of hard delete
       const { error: templateError } = await supabase
         .from('workout_templates')
-        .delete()
+        .update({ is_archived: true })
         .eq('id', templateId)
 
       if (templateError) {
@@ -336,14 +393,73 @@ export default function WorkoutDashboard() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
-  if (loading) {
+  /**
+   * Cleanup Protocol for Discarding Stale Sessions
+   * 
+   * This function handles the cleanup when a user chooses to discard a stale session.
+   * It removes the user from session_participants, updates their profile, and checks
+   * if they were the last participant to clean up the live_sessions record.
+   */
+  const discardStaleSession = async () => {
+    if (!staleSession) return
+
+    try {
+      // 1. Delete user from session_participants
+      await supabase
+        .from('session_participants')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('session_id', staleSession.id)
+
+      // 2. Update user's profile: set current_session_id to null and search_status to false
+      await supabase
+        .from('profiles')
+        .update({
+          current_session_id: null,
+          search_status: false
+        })
+        .eq('user_id', user.id)
+
+      // 3. Check if user was the last participant in the session
+      const { data: participants } = await supabase
+        .from('session_participants')
+        .select('user_id')
+        .eq('session_id', staleSession.id)
+
+      // 4. If no participants remain, delete the live_sessions record
+      if (!participants || participants.length === 0) {
+        await supabase
+          .from('live_sessions')
+          .delete()
+          .eq('id', staleSession.id)
+      }
+
+      // 5. Clear local state and refresh profile
+      setStaleSession(null)
+      setShowStaleModal(false)
+      fetchUserProfile()
+    } catch (error) {
+      console.error('Error discarding stale session:', error)
+      alert('Failed to discard session. Please try again.')
+    }
+  }
+
+  /**
+   * Resume Stale Session
+   * 
+   * Navigates the user to the workout tracker for the stale session.
+   */
+  const resumeStaleSession = () => {
+    if (!staleSession) return
+    navigate(`/workout/session/${staleSession.id}`)
+  }
+
+  if (loading || checkingStaleSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto border-orange-600 dark:border-orange-500"></div>
-          <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">Loading your data...</p>
-        </div>
-      </div>
+      <LoadingScreen 
+        isLoading={loading || checkingStaleSession}
+        onComplete={() => setShowLoadingScreen(false)} 
+      />
     )
   }
 
@@ -351,9 +467,40 @@ export default function WorkoutDashboard() {
 
   return (
     <>
-      {showLoadingScreen && (
-        <LoadingScreen onComplete={() => setShowLoadingScreen(false)} />
+      {/* Stale Session Intercept Modal */}
+      {showStaleModal && staleSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scale-in">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-orange-100 dark:bg-orange-900/30">
+                <Dumbbell className="w-8 h-8 text-orange-600 dark:text-orange-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50 mb-2">
+                Unfinished Workout
+              </h2>
+              <p className="text-zinc-600 dark:text-zinc-400">
+                You have an unfinished workout from over 12 hours ago. Would you like to resume or discard it?
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={resumeStaleSession}
+                className="flex-1 py-3 px-6 rounded-lg font-semibold text-white bg-orange-600 dark:bg-orange-500 hover:bg-orange-700 dark:hover:bg-orange-600 transition-all"
+              >
+                Resume
+              </button>
+              <button
+                onClick={discardStaleSession}
+                className="flex-1 py-3 px-6 rounded-lg font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
       )}
+
       <div className="min-h-screen pb-24 bg-white dark:bg-zinc-950 scrollbar-thin">
       {/* Header */}
       <header className="nav-bar sticky top-0 z-20 px-6 py-6 safe-top">

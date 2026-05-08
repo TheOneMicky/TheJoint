@@ -221,4 +221,4 @@ useEffect(() => {
 
 ## Deployment
 
-This project is designed for GitHub Pages deployment. The build output is optimized for static hosting with client-side Supabase connections.
+This project is deployed and live at https://the-fitness-joint.vercel.app

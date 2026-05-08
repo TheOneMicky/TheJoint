@@ -13,6 +13,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import LoadingScreen from '../components/LoadingScreen'
 
 export default function UserMatching() {
   const { user } = useAuth()
@@ -25,6 +26,7 @@ export default function UserMatching() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true)
 
   useEffect(() => {
     if (user) {
@@ -152,12 +154,10 @@ export default function UserMatching() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-orange-600 dark:text-orange-500 mx-auto" />
-          <p className="mt-4 text-zinc-600 dark:text-zinc-400">Loading...</p>
-        </div>
-      </div>
+      <LoadingScreen 
+        isLoading={loading}
+        onComplete={() => setShowLoadingScreen(false)} 
+      />
     )
   }
 
