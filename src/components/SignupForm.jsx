@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mail, Lock, Eye, EyeOff, Loader2, Check } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Check } from 'lucide-react'
 
 export default function SignupForm({ onSubmit, loading, error }) {
   const [email, setEmail] = useState('')

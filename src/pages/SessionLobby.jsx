@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Users, Loader2, Play, LayoutTemplate } from 'lucide-react'
+import { Users, Loader2, LayoutTemplate } from 'lucide-react'
 
 export default function SessionLobby() {
   const { user } = useAuth()

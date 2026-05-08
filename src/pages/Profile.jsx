@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { 
   ArrowLeft, 
-  UserPlus,
   Moon,
   Sun,
   Monitor,

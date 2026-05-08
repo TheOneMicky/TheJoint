@@ -9,7 +9,6 @@ import {
   Users,
   Trash2,
   Edit,
-  Check,
   X
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'

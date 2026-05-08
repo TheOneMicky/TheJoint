@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { UserPlus, UserCheck, X, Loader2 } from 'lucide-react'
+import { UserPlus, UserCheck, Loader2 } from 'lucide-react'
 
 export default function MatchmakingLobby() {
   const { user } = useAuth()
