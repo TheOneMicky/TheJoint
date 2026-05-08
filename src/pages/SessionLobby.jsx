@@ -366,7 +366,7 @@ export default function SessionLobby() {
             {isHost && isBothReady && (
               <div className="space-y-3">
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/dashboard', { state: { fromLobby: true } })}
                   className="w-full py-4 rounded-lg font-semibold text-white text-lg transition-all btn-primary flex items-center justify-center gap-2"
                 >
                   <LayoutTemplate className="w-5 h-5" />

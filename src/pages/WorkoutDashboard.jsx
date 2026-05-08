@@ -11,13 +11,14 @@ import {
   Edit,
   X
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import LoadingScreen from '../components/LoadingScreen'
 import MatchmakingLobby from '../components/MatchmakingLobby'
 
 export default function WorkoutDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [templates, setTemplates] = useState([])
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -30,108 +31,98 @@ export default function WorkoutDashboard() {
     partners: 0
   })
   const [searchStatus, setSearchStatus] = useState(false)
-  const [staleSession, setStaleSession] = useState(null)
-  const [showStaleModal, setShowStaleModal] = useState(false)
-  const [checkingStaleSession, setCheckingStaleSession] = useState(true)
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [staleSessionId, setStaleSessionId] = useState(null)
 
+  // Gatekeeper useEffect - Runs exactly once on mount
   useEffect(() => {
     if (user) {
-      fetchUserProfile()
-      fetchTemplates()
-      fetchUserStats()
+      gatekeeperCheck()
     }
-  }, [user])
+  }, [user, location.state])
 
-  // Stale Session Cleanup Check
-  useEffect(() => {
-    const checkForStaleSession = async () => {
-      if (!user) return
-
-      try {
-        // Fetch user's current session ID from profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('current_session_id')
-          .eq('user_id', user.id)
-          .single()
-
-        if (profileError) throw profileError
-
-        if (profile?.current_session_id) {
-          // Fetch the session details
-          const { data: session, error: sessionError } = await supabase
-            .from('live_sessions')
-            .select('id, created_at, status')
-            .eq('id', profile.current_session_id)
-            .single()
-
-          if (sessionError) {
-            // Session might not exist anymore, clean up profile
-            if (sessionError.code === 'PGRST116') {
-              await supabase
-                .from('profiles')
-                .update({ current_session_id: null, search_status: false })
-                .eq('user_id', user.id)
-            }
-            throw sessionError
-          }
-
-          // Check if session is already completed
-          if (session?.status === 'completed') {
-            await supabase
-              .from('profiles')
-              .update({ current_session_id: null, search_status: false })
-              .eq('user_id', user.id)
-            setCheckingStaleSession(false)
-            return
-          }
-
-          // Check if session is older than 12 hours
-          const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000)
-          const sessionCreatedAt = new Date(session.created_at)
-
-          if (sessionCreatedAt < twelveHoursAgo) {
-            // Session is stale
-            setStaleSession(session)
-            setShowStaleModal(true)
-          }
-        }
-      } catch (error) {
-        console.error('Error checking for stale session:', error)
-      } finally {
-        setCheckingStaleSession(false)
-      }
-    }
-
-    checkForStaleSession()
-  }, [user])
-
-  const fetchUserProfile = async () => {
+  const gatekeeperCheck = async () => {
     try {
-      const { data, error } = await supabase
+      // Check if user is coming from lobby - skip stale session check
+      const fromLobby = location.state?.fromLobby
+
+      // Fetch current user's profile
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('full_name, username, avatar_url, total_reps, total_minutes, workouts_completed, partner_count, search_status, current_session_id')
         .eq('user_id', user.id)
         .single()
 
-      if (!error) {
-        setUserProfile(data)
-        setSearchStatus(data.search_status || false)
-        // Update stats with profile data
-        setStats(prev => ({
-          ...prev,
-          totalReps: data.total_reps || 0,
-          totalMinutes: data.total_minutes || 0,
-          workoutsCompleted: data.workouts_completed || 0,
-          partners: data.partner_count || 0
-        }))
+      if (profileError) throw profileError
+
+      // Set user profile data
+      setUserProfile(profile)
+      setSearchStatus(profile.search_status || false)
+      setStats({
+        totalWorkouts: profile.workouts_completed || 0,
+        totalMinutes: profile.total_minutes || 0,
+        totalReps: profile.total_reps || 0,
+        workoutsCompleted: profile.workouts_completed || 0,
+        partners: profile.partner_count || 0
+      })
+
+      // Skip stale session check if coming from lobby
+      if (fromLobby) {
+        setIsInitializing(false)
+        return
       }
+
+      // Check for current_session_id
+      if (!profile.current_session_id) {
+        // No session - allow entry
+        setIsInitializing(false)
+        return
+      }
+
+      // Session exists in profile - fetch from live_sessions
+      const { data: session, error: sessionError } = await supabase
+        .from('live_sessions')
+        .select('id, status')
+        .eq('id', profile.current_session_id)
+        .single()
+
+      if (sessionError) {
+        // Session doesn't exist (deleted by CASCADE or host) - cleanup profile and allow entry
+        await supabase
+          .from('profiles')
+          .update({ current_session_id: null, search_status: false })
+          .eq('user_id', user.id)
+        setIsInitializing(false)
+        return
+      }
+
+      // Session exists - check if completed
+      if (session.status === 'completed') {
+        await supabase
+          .from('profiles')
+          .update({ current_session_id: null, search_status: false })
+          .eq('user_id', user.id)
+        setIsInitializing(false)
+        return
+      }
+
+      // Session exists and is active - set staleSessionId to trigger modal
+      setStaleSessionId(session.id)
+      setIsInitializing(false)
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      console.error('Error in gatekeeper check:', error)
+      setIsInitializing(false)
     } finally {
       setLoading(false)
     }
   }
+
+  // Fetch templates separately (not blocking)
+  useEffect(() => {
+    if (user && !isInitializing && !staleSessionId) {
+      fetchTemplates()
+    }
+  }, [user, isInitializing, staleSessionId])
 
   const fetchTemplates = async () => {
     try {
@@ -199,31 +190,6 @@ export default function WorkoutDashboard() {
       setTemplates([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchUserStats = async () => {
-    try {
-      // Fetch user stats directly from profiles table
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('user_id, total_reps, total_minutes, workouts_completed, partner_count, search_status')
-        .eq('user_id', user.id)
-        .single()
-
-      if (error) throw error
-
-      if (profile) {
-        setStats({
-          totalWorkouts: profile.workouts_completed || 0,
-          totalMinutes: profile.total_minutes || 0,
-          totalReps: profile.total_reps || 0,
-          workoutsCompleted: profile.workouts_completed || 0,
-          partners: profile.partner_count || 0
-        })
-      }
-    } catch (error) {
-      console.error('Error fetching user stats:', error)
     }
   }
 
@@ -393,25 +359,37 @@ export default function WorkoutDashboard() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
-  /**
-   * Cleanup Protocol for Discarding Stale Sessions
-   * 
-   * This function handles the cleanup when a user chooses to discard a stale session.
-   * It removes the user from session_participants, updates their profile, and checks
-   * if they were the last participant to clean up the live_sessions record.
-   */
-  const discardStaleSession = async () => {
-    if (!staleSession) return
+  const handleResume = () => {
+    if (!staleSessionId) return
+    navigate(`/workout/session/${staleSessionId}`)
+  }
+
+  const handleDiscard = async () => {
+    if (!staleSessionId) return
 
     try {
-      // 1. Delete user from session_participants
+      // Query session_participants for this session
+      const { data: participants } = await supabase
+        .from('session_participants')
+        .select('user_id')
+        .eq('session_id', staleSessionId)
+
+      // Delete current user from session_participants
       await supabase
         .from('session_participants')
         .delete()
         .eq('user_id', user.id)
-        .eq('session_id', staleSession.id)
+        .eq('session_id', staleSessionId)
 
-      // 2. Update user's profile: set current_session_id to null and search_status to false
+      // If user was the last participant, delete the live_sessions record
+      if (!participants || participants.length <= 1) {
+        await supabase
+          .from('live_sessions')
+          .delete()
+          .eq('id', staleSessionId)
+      }
+
+      // Update user's profile: current_session_id: null and search_status: false
       await supabase
         .from('profiles')
         .update({
@@ -420,88 +398,65 @@ export default function WorkoutDashboard() {
         })
         .eq('user_id', user.id)
 
-      // 3. Check if user was the last participant in the session
-      const { data: participants } = await supabase
-        .from('session_participants')
-        .select('user_id')
-        .eq('session_id', staleSession.id)
-
-      // 4. If no participants remain, delete the live_sessions record
-      if (!participants || participants.length === 0) {
-        await supabase
-          .from('live_sessions')
-          .delete()
-          .eq('id', staleSession.id)
-      }
-
-      // 5. Clear local state and refresh profile
-      setStaleSession(null)
-      setShowStaleModal(false)
-      fetchUserProfile()
+      // Clear staleSessionId to reveal the standard dashboard
+      setStaleSessionId(null)
+      // Refresh profile data
+      await gatekeeperCheck()
     } catch (error) {
-      console.error('Error discarding stale session:', error)
+      console.error('Error discarding session:', error)
       alert('Failed to discard session. Please try again.')
     }
   }
 
-  /**
-   * Resume Stale Session
-   * 
-   * Navigates the user to the workout tracker for the stale session.
-   */
-  const resumeStaleSession = () => {
-    if (!staleSession) return
-    navigate(`/workout/session/${staleSession.id}`)
-  }
-
-  if (loading || checkingStaleSession) {
+  // Strict Conditional Rendering
+  if (isInitializing) {
     return (
       <LoadingScreen 
-        isLoading={loading || checkingStaleSession}
+        isLoading={isInitializing}
         onComplete={() => setShowLoadingScreen(false)} 
       />
+    )
+  }
+
+  if (staleSessionId) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scale-in">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-orange-100 dark:bg-orange-900/30">
+              <Dumbbell className="w-8 h-8 text-orange-600 dark:text-orange-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50 mb-2">
+              Unfinished Workout
+            </h2>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              You have an unfinished workout. Would you like to resume or discard it?
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleResume}
+              className="flex-1 py-3 px-6 rounded-lg font-semibold text-white bg-orange-600 dark:bg-orange-500 hover:bg-orange-700 dark:hover:bg-orange-600 transition-all"
+            >
+              Resume
+            </button>
+            <button
+              onClick={handleDiscard}
+              className="flex-1 py-3 px-6 rounded-lg font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all"
+            >
+              Discard
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
 
   const displayName = userProfile?.username || userProfile?.full_name || user?.email?.split('@')[0] || 'User'
 
   return (
-    <>
-      {/* Stale Session Intercept Modal */}
-      {showStaleModal && staleSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scale-in">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-orange-100 dark:bg-orange-900/30">
-                <Dumbbell className="w-8 h-8 text-orange-600 dark:text-orange-500" />
-              </div>
-              <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50 mb-2">
-                Unfinished Workout
-              </h2>
-              <p className="text-zinc-600 dark:text-zinc-400">
-                You have an unfinished workout from over 12 hours ago. Would you like to resume or discard it?
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={resumeStaleSession}
-                className="flex-1 py-3 px-6 rounded-lg font-semibold text-white bg-orange-600 dark:bg-orange-500 hover:bg-orange-700 dark:hover:bg-orange-600 transition-all"
-              >
-                Resume
-              </button>
-              <button
-                onClick={discardStaleSession}
-                className="flex-1 py-3 px-6 rounded-lg font-semibold text-zinc-700 dark:text-zinc-300 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all"
-              >
-                Discard
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="min-h-screen pb-24 bg-white dark:bg-zinc-950 scrollbar-thin">
+    <div className="min-h-screen pb-24 bg-white dark:bg-zinc-950 scrollbar-thin">
       {/* Header */}
       <header className="nav-bar sticky top-0 z-20 px-6 py-6 safe-top">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -716,6 +671,5 @@ export default function WorkoutDashboard() {
         <Plus className="w-6 h-6" />
       </button>
     </div>
-    </>
   )
 }

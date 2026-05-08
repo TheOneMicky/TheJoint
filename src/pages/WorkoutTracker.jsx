@@ -47,6 +47,7 @@ export default function WorkoutTracker() {
   const partnerIdRef = useRef(null) // Partner Memory Bank - lock in partner ID early
   const isCompleteRef = useRef(false) // Track completion status without closure staleness
   const vaultRef = useRef({ isComplete: false, reps: 0, minutes: 0, partnerId: null }) // State Vault for fresh data in closures
+  const hasHydrated = useRef(false) // Track if state hydration has occurred
   
   // UI state
   const [showEndConfirm, setShowEndConfirm] = useState(false)
@@ -353,6 +354,39 @@ export default function WorkoutTracker() {
       };
     }
   }, [activeExerciseIndex, templateExercises, sessionLogs, partnerIdRef.current]);
+
+  // State Hydration: Fast-forward returning users to where they left off
+  useEffect(() => {
+    // Data Guards - Don't proceed until database payload exists
+    if (loading) return
+    if (!sessionId) return
+    if (templateExercises.length === 0) return
+
+    const myLogs = sessionLogs.filter(log => log.user_id === user.id)
+
+    // Fresh session - no fast-forwarding needed
+    if (myLogs.length === 0) {
+      hasHydrated.current = true
+      return
+    }
+
+    for (let i = 0; i < templateExercises.length; i++) {
+      const currentEx = templateExercises[i]
+      const targetExId = currentEx.exercises?.id
+      const requiredSets = currentEx.sets || 1
+      const completedSets = myLogs.filter(log => log.exercise_id === targetExId).length
+
+      if (completedSets < requiredSets) {
+        setActiveExerciseIndex(i)
+        setCurrentSetNumber(completedSets + 1)
+        return
+      }
+    }
+
+    // If loop finishes without return, all exercises complete
+    setWorkoutComplete(true)
+    hasHydrated.current = true
+  }, [sessionLogs, templateExercises, user.id, loading, sessionId])
 
   const handleWorkComplete = async () => {
     setIsWorking(false)
