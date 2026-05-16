@@ -43,8 +43,9 @@ export default function WorkoutDashboard() {
 
   const gatekeeperCheck = async () => {
     try {
-      // Check if user is coming from lobby - skip stale session check
+      // Check if user is coming from lobby or template - skip stale session check
       const fromLobby = location.state?.fromLobby
+      const fromTemplate = location.state?.fromTemplate
 
       // Fetch current user's profile
       const { data: profile, error: profileError } = await supabase
@@ -66,8 +67,8 @@ export default function WorkoutDashboard() {
         partners: profile.partner_count || 0
       })
 
-      // Skip stale session check if coming from lobby
-      if (fromLobby) {
+      // Skip stale session check if coming from lobby or template
+      if (fromLobby || fromTemplate) {
         setIsInitializing(false)
         return
       }

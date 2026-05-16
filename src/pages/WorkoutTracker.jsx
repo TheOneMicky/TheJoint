@@ -357,6 +357,9 @@ export default function WorkoutTracker() {
 
   // State Hydration: Fast-forward returning users to where they left off
   useEffect(() => {
+    // Only run once per session - prevent re-running when sessionLogs updates
+    if (hasHydrated.current) return
+
     // Data Guards - Don't proceed until database payload exists
     if (loading) return
     if (!sessionId) return
@@ -379,6 +382,7 @@ export default function WorkoutTracker() {
       if (completedSets < requiredSets) {
         setActiveExerciseIndex(i)
         setCurrentSetNumber(completedSets + 1)
+        hasHydrated.current = true
         return
       }
     }

@@ -244,12 +244,25 @@ export default function SessionLobby() {
         })
         .eq('user_id', user.id)
     } else {
-      // Guest leaves - update participant status
-      if (currentUserParticipant) {
+      // Guest leaves - delete from session_participants and check if last participant
+      const { data: participants } = await supabase
+        .from('session_participants')
+        .select('user_id')
+        .eq('session_id', sessionId)
+
+      // Delete current user from session_participants
+      await supabase
+        .from('session_participants')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('session_id', sessionId)
+
+      // If user was the last participant, delete the live_sessions record
+      if (!participants || participants.length <= 1) {
         await supabase
-          .from('session_participants')
-          .update({ status: 'left' })
-          .eq('id', currentUserParticipant.id)
+          .from('live_sessions')
+          .delete()
+          .eq('id', sessionId)
       }
       
       await supabase

@@ -228,7 +228,7 @@ export default function CreateTemplate() {
         // Handle RLS policy violations
         if (error.code === '42501' || error.message.includes('permission denied')) {
           alert('You do not have permission to edit this template.')
-          navigate('/dashboard')
+          navigate('/dashboard', { state: { fromTemplate: true } })
           return
         }
         throw error
@@ -253,7 +253,7 @@ export default function CreateTemplate() {
     } catch (error) {
       console.error('Error loading template:', error)
       alert('Failed to load template. Please try again.')
-      navigate('/dashboard')
+      navigate('/dashboard', { state: { fromTemplate: true } })
     } finally {
       setIsLoading(false)
     }
@@ -474,7 +474,7 @@ export default function CreateTemplate() {
       // Show success state before navigating
       setSaveSuccess(true);
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/dashboard', { state: { fromTemplate: true } });
       }, 1000);
     } catch (error) {
       console.error('SAVE TEMPLATE ERROR:', error);
@@ -532,7 +532,7 @@ export default function CreateTemplate() {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center">
             <button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/dashboard', { state: { fromTemplate: true } })}
               className="btn-icon mr-3"
             >
               <ArrowLeft className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
